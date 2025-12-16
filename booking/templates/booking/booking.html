@@ -1,0 +1,418 @@
+{% extends 'booking/base.html' %}
+{% load static %}
+
+{% block title %}Book a Court - Badminton Court Booking{% endblock %}
+
+{% block extra_css %}
+<style>
+    .booking-container {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+
+    .time-slot {
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all var(--transition-base);
+        text-align: center;
+    }
+
+    .time-slot:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-2px);
+    }
+
+    .time-slot.selected {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        border-color: var(--primary-light);
+    }
+
+    .resource-item {
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all var(--transition-base);
+    }
+
+    .resource-item:hover {
+        border-color: var(--primary-color);
+    }
+
+    .resource-item.selected {
+        border-color: var(--secondary-color);
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    .resource-item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .price-breakdown {
+        position: sticky;
+        top: 100px;
+    }
+
+    .price-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .price-total {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary-light);
+        margin-top: 1rem;
+    }
+
+    @media (max-width: 968px) {
+        .booking-container {
+            grid-template-columns: 1fr;
+        }
+
+        .price-breakdown {
+            position: static;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 2rem;">Book Your Court</h1>
+
+    <div class="booking-container">
+        <!-- Left Column: Booking Form -->
+        <div>
+            <!-- Step 1: Date Selection -->
+            <div class="card mb-3">
+                <h3 style="margin-bottom: 1rem;">📅 Select Date</h3>
+                <div class="flex gap-2" style="flex-wrap: wrap;">
+                    {% for date in available_dates %}
+                    <button class="btn btn-secondary date-btn {% if date == selected_date %}btn-primary{% endif %}"
+                        data-date="{{ date|date:'Y-m-d' }}" onclick="selectDate(this.dataset.date)">
+                        {{ date|date:'D, M j' }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Step 2: Time Slot Selection -->
+            <div class="card mb-3">
+                <h3 style="margin-bottom: 1rem;">⏰ Select Time Slot</h3>
+                <div class="grid grid-4" id="time-slots-container">
+                    {% for slot in time_slots %}
+                    <div class="time-slot" data-start="{{ slot.start_time|time:'H:i' }}"
+                        data-end="{{ slot.end_time|time:'H:i' }}"
+                        onclick="selectTimeSlot(this.dataset.start, this.dataset.end)">
+                        <div style="font-weight: 600;">{{ slot.display }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Step 3: Court Selection -->
+            <div class="card mb-3" id="court-selection" style="display: none;">
+                <h3 style="margin-bottom: 1rem;">🏟️ Select Court</h3>
+                <div class="grid grid-2" id="courts-container">
+                    <!-- Courts will be loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Step 4: Equipment Selection (Optional) -->
+            <div class="card mb-3" id="equipment-selection" style="display: none;">
+                <h3 style="margin-bottom: 1rem;">👟 Add Equipment (Optional)</h3>
+                <div class="grid grid-2" id="equipment-container">
+                    <!-- Equipment will be loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Step 5: Coach Selection (Optional) -->
+            <div class="card mb-3" id="coach-selection" style="display: none;">
+                <h3 style="margin-bottom: 1rem;">🎓 Add Coach (Optional)</h3>
+                <div class="grid grid-2" id="coaches-container">
+                    <!-- Coaches will be loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Confirm Button -->
+            <button id="confirm-btn" class="btn btn-success" style="width: 100%; display: none;"
+                onclick="confirmBooking()">
+                Confirm Booking
+            </button>
+        </div>
+
+        <!-- Right Column: Price Breakdown -->
+        <div>
+            <div class="card price-breakdown">
+                <h3 style="margin-bottom: 1rem;">💰 Price Breakdown</h3>
+                <div id="price-details">
+                    <p style="color: var(--text-muted); text-align: center; padding: 2rem 0;">
+                        Select a court to see pricing
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let selectedDate = '{{ selected_date|date:"Y-m-d" }}';
+    let selectedStartTime = null;
+    let selectedEndTime = null;
+    let selectedCourt = null;
+    let selectedEquipment = [];
+    let selectedCoach = null;
+    let availableResources = null;
+
+    function selectDate(date) {
+        window.location.href = `{% url 'booking' %}?date=${date}`;
+    }
+
+    async function selectTimeSlot(startTime, endTime) {
+        // Update UI
+        document.querySelectorAll('.time-slot').forEach(slot => slot.classList.remove('selected'));
+        event.target.closest('.time-slot').classList.add('selected');
+
+        selectedStartTime = startTime;
+        selectedEndTime = endTime;
+        selectedCourt = null;
+        selectedEquipment = [];
+        selectedCoach = null;
+
+        // Fetch available resources
+        await loadAvailableResources();
+    }
+
+    async function loadAvailableResources() {
+        try {
+            const response = await fetch(`/api/availability/?date=${selectedDate}&start_time=${selectedStartTime}&end_time=${selectedEndTime}`);
+            const data = await response.json();
+
+            if (data.success) {
+                availableResources = data;
+                renderCourts(data.courts);
+                renderEquipment(data.equipment);
+                renderCoaches(data.coaches);
+
+                document.getElementById('court-selection').style.display = 'block';
+                document.getElementById('equipment-selection').style.display = 'block';
+                document.getElementById('coach-selection').style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error loading resources:', error);
+        }
+    }
+
+    function renderCourts(courts) {
+        const container = document.getElementById('courts-container');
+        container.innerHTML = courts.map(court => `
+            <div class="resource-item" onclick="selectCourt(${court.id}, '${court.name}', '${court.type}')">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">${court.name}</div>
+                <div class="badge badge-primary">${court.type}</div>
+            </div>
+        `).join('');
+    }
+
+    function renderEquipment(equipment) {
+        const container = document.getElementById('equipment-container');
+        container.innerHTML = equipment.map(item => `
+            <div class="resource-item" onclick="toggleEquipment(${item.id}, '${item.name}')">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">${item.name}</div>
+                <div style="color: var(--text-muted); font-size: 0.875rem;">Available: ${item.available_qty}</div>
+            </div>
+        `).join('');
+    }
+
+    function renderCoaches(coaches) {
+        const container = document.getElementById('coaches-container');
+        if (coaches.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-muted);">No coaches available for this slot</p>';
+        } else {
+            container.innerHTML = coaches.map(coach => `
+                <div class="resource-item" onclick="selectCoach(${coach.id}, '${coach.name}', ${coach.fee})">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">${coach.name}</div>
+                    <div style="color: var(--secondary-color);">₹${coach.fee}/hr</div>
+                </div>
+            `).join('');
+        }
+    }
+
+    async function selectCourt(courtId, courtName, courtType) {
+        document.querySelectorAll('#courts-container .resource-item').forEach(item => item.classList.remove('selected'));
+        event.target.closest('.resource-item').classList.add('selected');
+
+        selectedCourt = { id: courtId, name: courtName, type: courtType };
+        await updatePrice();
+        document.getElementById('confirm-btn').style.display = 'block';
+    }
+
+    async function toggleEquipment(equipmentId, equipmentName) {
+        const element = event.target.closest('.resource-item');
+        const index = selectedEquipment.findIndex(e => e.id === equipmentId);
+
+        if (index > -1) {
+            selectedEquipment.splice(index, 1);
+            element.classList.remove('selected');
+        } else {
+            selectedEquipment.push({ id: equipmentId, name: equipmentName, quantity: 1 });
+            element.classList.add('selected');
+        }
+
+        if (selectedCourt) await updatePrice();
+    }
+
+    async function selectCoach(coachId, coachName, coachFee) {
+        document.querySelectorAll('#coaches-container .resource-item').forEach(item => item.classList.remove('selected'));
+
+        if (selectedCoach && selectedCoach.id === coachId) {
+            selectedCoach = null;
+        } else {
+            event.target.closest('.resource-item').classList.add('selected');
+            selectedCoach = { id: coachId, name: coachName, fee: coachFee };
+        }
+
+        if (selectedCourt) await updatePrice();
+    }
+
+    async function updatePrice() {
+        if (!selectedCourt) return;
+
+        try {
+            const response = await fetch('/api/calculate-price/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    court_id: selectedCourt.id,
+                    date: selectedDate,
+                    start_time: selectedStartTime,
+                    end_time: selectedEndTime,
+                    equipment_ids: selectedEquipment.map(e => e.id),
+                    coach_id: selectedCoach ? selectedCoach.id : null
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                renderPriceBreakdown(data.breakdown, data.total_price);
+            }
+        } catch (error) {
+            console.error('Error calculating price:', error);
+        }
+    }
+
+    function renderPriceBreakdown(breakdown, totalPrice) {
+        const container = document.getElementById('price-details');
+        container.innerHTML = breakdown.map(item => `
+            <div class="price-item">
+                <span>${item.rule}</span>
+                <span style="color: var(--secondary-color);">₹${item.amount.toFixed(2)}</span>
+            </div>
+        `).join('') + `
+            <div class="price-total flex-between">
+                <span>Total</span>
+                <span>₹${parseFloat(totalPrice).toFixed(2)}</span>
+            </div>
+        `;
+    }
+
+    async function confirmBooking() {
+        if (!selectedCourt) {
+            alert('Please select a court');
+            return;
+        }
+
+        const confirmBtn = document.getElementById('confirm-btn');
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Processing...';
+
+        try {
+            const response = await fetch('/api/confirm-booking/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    court_id: selectedCourt.id,
+                    date: selectedDate,
+                    start_time: selectedStartTime,
+                    end_time: selectedEndTime,
+                    equipment: selectedEquipment,
+                    coach_id: selectedCoach ? selectedCoach.id : null
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Booking confirmed successfully!');
+                window.location.href = '{% url "booking_history" %}';
+            } else if (data.slot_full) {
+                // Slot is full, offer waitlist
+                if (confirm(data.message)) {
+                    await joinWaitlist();
+                } else {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Confirm Booking';
+                }
+            } else {
+                alert('Booking failed: ' + (data.errors ? data.errors.join(', ') : data.error));
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Confirm Booking';
+            }
+        } catch (error) {
+            console.error('Error confirming booking:', error);
+            alert('An error occurred. Please try again.');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm Booking';
+        }
+    }
+
+    async function joinWaitlist() {
+        try {
+            const response = await fetch('/api/join-waitlist/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    court_id: selectedCourt.id,
+                    date: selectedDate,
+                    start_time: selectedStartTime,
+                    end_time: selectedEndTime
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert(data.message);
+                window.location.href = '{% url "booking_history" %}';
+            } else {
+                alert('Failed to join waitlist: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error joining waitlist:', error);
+            alert('An error occurred while joining the waitlist.');
+        }
+    }
+
+</script>
+{% endblock %}

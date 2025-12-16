@@ -1,0 +1,51 @@
+{% extends 'booking/base.html' %}
+
+{% block title %}Register - Badminton Court Booking{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 500px; margin-top: 3rem;">
+    <div class="card">
+        <h2 style="margin-bottom: 1.5rem; text-align: center;">Create Account</h2>
+
+        <form method="post">
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div class="alert alert-error">
+                Please correct the errors below.
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label class="form-label" for="id_username">Username</label>
+                <input type="text" name="username" class="form-control" id="id_username" required>
+                {% if form.username.errors %}
+                <small style="color: var(--danger-color);">{{ form.username.errors.0 }}</small>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_password1">Password</label>
+                <input type="password" name="password1" class="form-control" id="id_password1" required>
+                {% if form.password1.errors %}
+                <small style="color: var(--danger-color);">{{ form.password1.errors.0 }}</small>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_password2">Confirm Password</label>
+                <input type="password" name="password2" class="form-control" id="id_password2" required>
+                {% if form.password2.errors %}
+                <small style="color: var(--danger-color);">{{ form.password2.errors.0 }}</small>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
+        </form>
+
+        <p style="text-align: center; margin-top: 1.5rem; color: var(--text-secondary);">
+            Already have an account? <a href="{% url 'login' %}" style="color: var(--primary-light);">Login here</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

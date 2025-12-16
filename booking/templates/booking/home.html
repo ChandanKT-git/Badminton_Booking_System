@@ -1,0 +1,64 @@
+{% extends 'booking/base.html' %}
+
+{% block content %}
+<div class="hero">
+    <div class="container">
+        <h1>Book Your Badminton Court</h1>
+        <p>Premium indoor and outdoor courts with professional coaching</p>
+        
+        {% if user.is_authenticated %}
+            <a href="{% url 'booking' %}" class="btn btn-primary">Start Booking</a>
+        {% else %}
+            <div class="flex-center gap-2 mt-3">
+                <a href="{% url 'register' %}" class="btn btn-primary">Get Started</a>
+                <a href="{% url 'login' %}" class="btn btn-secondary">Login</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="container">
+    <div class="grid grid-3">
+        <div class="card fade-in">
+            <h3 style="color: var(--primary-light); margin-bottom: 1rem;">🏟️ Premium Courts</h3>
+            <p style="color: var(--text-secondary);">4 professional courts - 2 indoor and 2 outdoor, all maintained to the highest standards.</p>
+        </div>
+        
+        <div class="card fade-in" style="animation-delay: 0.1s;">
+            <h3 style="color: var(--secondary-color); margin-bottom: 1rem;">👟 Equipment Rental</h3>
+            <p style="color: var(--text-secondary);">Quality rackets and shoes available for rent. No need to bring your own gear!</p>
+        </div>
+        
+        <div class="card fade-in" style="animation-delay: 0.2s;">
+            <h3 style="color: var(--accent-color); margin-bottom: 1rem;">🎓 Expert Coaches</h3>
+            <p style="color: var(--text-secondary);">Professional coaches available to help improve your game with personalized training.</p>
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <h2 style="margin-bottom: 1rem;">How It Works</h2>
+        <div class="grid grid-4">
+            <div>
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">1️⃣</div>
+                <h4 style="color: var(--primary-light);">Select Date & Time</h4>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Choose your preferred slot</p>
+            </div>
+            <div>
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">2️⃣</div>
+                <h4 style="color: var(--primary-light);">Pick Your Court</h4>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Indoor or outdoor options</p>
+            </div>
+            <div>
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">3️⃣</div>
+                <h4 style="color: var(--primary-light);">Add Extras</h4>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Equipment & coach (optional)</p>
+            </div>
+            <div>
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">4️⃣</div>
+                <h4 style="color: var(--primary-light);">Confirm Booking</h4>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Instant confirmation</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

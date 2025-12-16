@@ -1,0 +1,213 @@
+{% extends 'booking/base.html' %}
+
+{% block title %}My Bookings - Badminton Court Booking{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 2rem;">My Bookings</h1>
+
+    {% if bookings %}
+    <h2 style="margin-bottom: 1rem;">Active Bookings</h2>
+    <div class="grid grid-2">
+        {% for booking in bookings %}
+        <div class="card fade-in">
+            <div class="flex-between mb-2">
+                <h3 style="color: var(--primary-light);">{{ booking.court.name }}</h3>
+                {% if booking.status == 'CONFIRMED' %}
+                <span class="badge badge-success">Confirmed</span>
+                {% else %}
+                <span class="badge badge-danger">Cancelled</span>
+                {% endif %}
+            </div>
+
+            <div style="color: var(--text-secondary); margin-bottom: 1rem;">
+                <div style="margin-bottom: 0.5rem;">
+                    📅 {{ booking.date|date:"D, M j, Y" }}
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    ⏰ {{ booking.start_time|time:"g:i A" }} - {{ booking.end_time|time:"g:i A" }}
+                </div>
+                {% if booking.coach %}
+                <div style="margin-bottom: 0.5rem;">
+                    🎓 Coach: {{ booking.coach.name }}
+                </div>
+                {% endif %}
+                {% if booking.equipment_items.all %}
+                <div style="margin-bottom: 0.5rem;">
+                    👟 Equipment:
+                    {% for item in booking.equipment_items.all %}
+                    {{ item.equipment.name }} (x{{ item.quantity }}){% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                <div class="flex-between">
+                    <span style="font-weight: 600;">Total Price:</span>
+                    <span style="font-size: 1.25rem; font-weight: 700; color: var(--secondary-color);">
+                        ₹{{ booking.total_price }}
+                    </span>
+                </div>
+
+                <details style="margin-top: 1rem;">
+                    <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.875rem;">
+                        View Price Breakdown
+                    </summary>
+                    <div
+                        style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm);">
+                        {% for item in booking.price_breakdown %}
+                        <div class="flex-between" style="font-size: 0.875rem; padding: 0.25rem 0;">
+                            <span>{{ item.rule }}</span>
+                            <span>₹{{ item.amount }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
+            </div>
+
+            <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
+                Booked on {{ booking.created_at|date:"M j, Y g:i A" }}
+            </div>
+
+            {% if booking.status == 'CONFIRMED' %}
+            <button class="btn btn-danger cancel-booking-btn" style="width: 100%; margin-top: 1rem;"
+                data-booking-id="{{ booking.id }}">
+                Cancel Booking
+            </button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card text-center" style="padding: 3rem;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+        <h3 style="margin-bottom: 1rem;">No Bookings Yet</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">
+            You haven't made any bookings. Start by booking a court!
+        </p>
+        <a href="{% url 'booking' %}" class="btn btn-primary">Book a Court</a>
+    </div>
+    {% endif %}
+
+    {% if waitlist_entries %}
+    <h2 style="margin-top: 3rem; margin-bottom: 1rem;">Waitlist Entries</h2>
+    <div class="grid grid-2">
+        {% for entry in waitlist_entries %}
+        <div class="card fade-in" style="border-left: 4px solid var(--warning-color);">
+            <div class="flex-between mb-2">
+                <h3 style="color: var(--warning-color);">{{ entry.court.name }}</h3>
+                {% if entry.status == 'WAITING' %}
+                <span class="badge" style="background: var(--warning-color);">Waiting</span>
+                {% elif entry.status == 'NOTIFIED' %}
+                <span class="badge badge-success">Notified</span>
+                {% else %}
+                <span class="badge badge-danger">Expired</span>
+                {% endif %}
+            </div>
+
+            <div style="color: var(--text-secondary); margin-bottom: 1rem;">
+                <div style="margin-bottom: 0.5rem;">
+                    📅 {{ entry.date|date:"D, M j, Y" }}
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    ⏰ {{ entry.start_time|time:"g:i A" }} - {{ entry.end_time|time:"g:i A" }}
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
+                Joined waitlist on {{ entry.created_at|date:"M j, Y g:i A" }}
+            </div>
+
+            {% if entry.status == 'NOTIFIED' %}
+            <div
+                style="margin-top: 1rem; padding: 0.75rem; background: rgba(16, 185, 129, 0.1); border-radius: var(--radius-sm); color: var(--secondary-color);">
+                ✅ Slot available! Notified on {{ entry.notified_at|date:"M j, Y g:i A" }}
+            </div>
+            {% endif %}
+
+            {% if entry.status == 'WAITING' %}
+            <button class="btn btn-secondary remove-waitlist-btn" style="width: 100%; margin-top: 1rem;"
+                data-waitlist-id="{{ entry.id }}">
+                Leave Waitlist
+            </button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Event delegation for cancel booking buttons
+    document.addEventListener('DOMContentLoaded', function () {
+        // Handle cancel booking buttons
+        document.querySelectorAll('.cancel-booking-btn').forEach(button => {
+            button.addEventListener('click', async function () {
+                const bookingId = this.getAttribute('data-booking-id');
+
+                if (!confirm('Are you sure you want to cancel this booking? The next person in the waitlist will be notified.')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/cancel-booking/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ booking_id: bookingId })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Failed to cancel booking: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error canceling booking:', error);
+                    alert('An error occurred while canceling the booking.');
+                }
+            });
+        });
+
+        // Handle remove from waitlist buttons
+        document.querySelectorAll('.remove-waitlist-btn').forEach(button => {
+            button.addEventListener('click', async function () {
+                const waitlistId = this.getAttribute('data-waitlist-id');
+
+                if (!confirm('Are you sure you want to leave the waitlist?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/remove-waitlist/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ waitlist_id: waitlistId })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Failed to remove from waitlist: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error removing from waitlist:', error);
+                    alert('An error occurred while removing from the waitlist.');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
