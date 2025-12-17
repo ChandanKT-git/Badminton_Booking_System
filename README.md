@@ -92,7 +92,7 @@ CourtBookingSystem/
 
 1. **Clone or navigate to the project directory**:
    ```bash
-   cd "c:\Users\chand\Downloads\VS Codes\FullStack\OJT\CourtBookingSystem"
+   cd "c:\Users\CourtBookingSystem"
    ```
 
 2. **Install dependencies**:
