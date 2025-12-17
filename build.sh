@@ -12,5 +12,5 @@ python manage.py collectstatic --noinput
 # Run migrations
 python manage.py migrate --noinput
 
-# Create superuser if it doesn't exist (optional - for first deployment)
-# python manage.py seed_data
+# Seed initial data (courts, equipment, coaches, pricing rules, admin user)
+python manage.py seed_data
